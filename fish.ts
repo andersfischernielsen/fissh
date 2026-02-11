@@ -21,7 +21,7 @@ const placeVegetation = (rows: number, columns: number): Positions => {
   const bottom = rows - 1;
   positions[bottom] = {};
   for (let c = 0; c < columns; c++) {
-    if (Math.random() < variance / 4) {
+    if (Math.random() < variance / 2.5) {
       const v = vegetation[Math.floor(Math.random() * vegetation.length)];
 
       if (v) {
@@ -137,13 +137,56 @@ const tickBubbles = (
   return next;
 };
 
-export const stream = (rows: number, columns: number) => {
+export const stream = (
+  rows: number,
+  columns: number,
+  getDimensions: () => { rows: number; columns: number },
+) => {
+  let lastColumns = columns;
+  let lastRows = rows;
   const flora = placeVegetation(rows, columns);
   let current: Positions = initial(rows, columns);
   let bubbles: Positions = {};
   let tickCount = 0;
 
   setInterval(() => {
+    const dims = getDimensions();
+    const rows = dims.rows;
+    const columns = dims.columns;
+
+    if (columns > lastColumns) {
+      const bottom = rows - 1;
+      if (!flora[bottom]) flora[bottom] = {};
+      for (let c = lastColumns; c < columns; c++) {
+        if (Math.random() < variance / 4) {
+          const v = vegetation[Math.floor(Math.random() * vegetation.length)];
+          if (v) flora[bottom][c] = v;
+        }
+      }
+    }
+
+    if (rows !== lastRows) {
+      const oldBottom = lastRows - 1;
+      const newBottom = rows - 1;
+      if (flora[oldBottom] && oldBottom !== newBottom) {
+        flora[newBottom] = flora[oldBottom];
+        delete flora[oldBottom];
+      }
+      if (current[oldBottom] && oldBottom !== newBottom) {
+        if (!current[newBottom]) current[newBottom] = {};
+        for (const col of Object.keys(current[oldBottom]).map(Number)) {
+          const species = current[oldBottom][col];
+          if (species && crawling.includes(species as Crawling)) {
+            current[newBottom][col] = species;
+            delete current[oldBottom][col];
+          }
+        }
+      }
+    }
+
+    lastColumns = columns;
+    lastRows = rows;
+
     if (Math.random() <= variance) {
       const spawn = initial(rows, columns);
       for (const r of Object.keys(spawn).map(Number)) {
@@ -155,7 +198,7 @@ export const stream = (rows: number, columns: number) => {
       }
     }
 
-    if (Math.random() <= variance / 5) {
+    if (Math.random() <= variance / 6) {
       const bottom = rows - 1;
       if (!hasNeighbor(current, bottom, columns - 1)) {
         if (!current[bottom]) current[bottom] = {};
