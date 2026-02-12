@@ -20,15 +20,15 @@ const connection: ServerConnectionListener = (
     const session = accept();
 
     session.on("pty", (accept, _, info) => {
-      accept();
       columns = Math.floor(info.cols / 2);
       rows = info.rows;
+      accept();
     });
 
     session.on("window-change", (accept, _, info) => {
-      accept();
-      columns = Math.floor(info.cols / 2);
       rows = info.rows;
+      columns = Math.floor(info.cols / 2);
+      accept();
     });
 
     session.on("shell", (accept) => {

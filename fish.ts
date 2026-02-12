@@ -17,7 +17,7 @@ const crawling: Set<Crawling> = new Set(["🦀"]);
 const bubble: Set<Bubble> = new Set(["🫧"]);
 
 const variance = 0.15;
-const time = 180;
+const time = 120;
 
 const randomSpawn = (rows: number, columns: number) => ({
   row: Math.floor(Math.random() * (rows - 2)),
@@ -49,12 +49,13 @@ const render = (
 const hasNeighbor = (
   positions: Positions,
   row: number,
-  col: number,
+  column: number,
 ): boolean => {
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const neighbor = positions[row + dr]?.[col + dc];
+  for (let r = -1; r <= 1; r++) {
+    for (let c = -1; c <= 1; c++) {
+      if (r === 0 && c === 0) continue;
+
+      const neighbor = positions[row + r]?.[column + c];
       if (
         neighbor &&
         !swimming.has(neighbor as Swimming) &&
@@ -63,6 +64,7 @@ const hasNeighbor = (
         return true;
     }
   }
+
   return false;
 };
 
@@ -75,19 +77,19 @@ const tick = (
   const next = createGrid(rows, columns);
 
   for (let row = 0; row < positions.length; row++) {
-    for (let col = 0; col < positions[row]!.length; col++) {
-      const species = positions[row]![col];
+    for (let column = 0; column < positions[row]!.length; column++) {
+      const species = positions[row]![column];
       if (!species) continue;
       if (bubble.has(species as Bubble)) continue;
 
       const isSwimming = swimming.has(species as Swimming);
 
       if (!isSwimming && tickCount % 3 !== 0) {
-        next[row]![col] = species;
+        next[row]![column] = species;
         continue;
       }
 
-      const newCol = col - 1;
+      const newCol = column - 1;
 
       if (newCol < 0) continue;
 
@@ -97,7 +99,6 @@ const tick = (
       }
 
       if (newRow < 0 || newRow >= (isSwimming ? rows - 2 : rows)) continue;
-
       if (hasNeighbor(next, newRow, newCol)) continue;
 
       next[newRow]![newCol] = species;
@@ -149,12 +150,14 @@ export const stream = (
       const newBubbles = createGrid(rows, columns);
       const minR = Math.min(lastRows, rows);
       const minC = Math.min(lastColumns, columns);
+
       for (let r = 0; r < minR; r++) {
         for (let c = 0; c < minC; c++) {
           newCurrent[r]![c] = current[r]![c]!;
           newBubbles[r]![c] = bubbles[r]![c]!;
         }
       }
+
       if (rows !== lastRows) {
         const oldBottom = lastRows - 1;
         const newBottom = rows - 1;
