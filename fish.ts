@@ -19,14 +19,83 @@ const bubble: Set<Bubble> = new Set(["🫧"]);
 const variance = 0.15;
 const time = 120;
 
-const randomSpawn = (rows: number, columns: number) => ({
-  row: Math.floor(Math.random() * (rows - 2)),
-  col: columns - 1,
-  entity: swimming
-    .values()
-    .drop(Math.floor(Math.random() * swimming.size))
-    .next().value as Swimming,
-});
+const shouldSpawnSwimming = () => Math.random() <= variance;
+const shouldSpawnCrawling = () => Math.random() <= variance / 6;
+const shouldSpawnBubble = () => Math.random() <= variance / 2;
+
+const randomSpawn = (rows: number, columns: number, current: Positions) => {
+  const row = Math.floor(Math.random() * (rows - 2));
+  const col = columns - 1;
+  if (!hasNeighbor(current, row, col)) {
+    current[row]![col] = swimming
+      .values()
+      .drop(Math.floor(Math.random() * swimming.size))
+      .next().value as Swimming;
+  }
+};
+
+const spawnSwimming = (rows: number, columns: number, current: Positions) => {
+  if (!shouldSpawnSwimming()) return;
+
+  randomSpawn(rows, columns, current);
+};
+
+const spawnCrawling = (rows: number, columns: number, current: Positions) => {
+  if (!shouldSpawnCrawling()) return;
+
+  const bottom = rows - 1;
+  if (!hasNeighbor(current, bottom, columns - 1)) {
+    current[bottom]![columns - 1] = crawling
+      .values()
+      .drop(Math.floor(Math.random() * crawling.size))
+      .next().value as Crawling;
+  }
+};
+
+const spawnBubbles = (rows: number, columns: number, bubbles: Positions) => {
+  if (!shouldSpawnBubble()) return;
+
+  const bubbleRow = rows - 2;
+  const bubbleCol = Math.floor(Math.random() * columns);
+  if (!bubbles[bubbleRow]![bubbleCol]) {
+    bubbles[bubbleRow]![bubbleCol] = "🫧";
+  }
+};
+
+const moveToBottom = (
+  lastBottom: number,
+  bottom: number,
+  columns: number,
+  current: Positions,
+) => {
+  const oldBottom = lastBottom - 1;
+  const newBottom = bottom - 1;
+  if (oldBottom < bottom) {
+    for (let c = 0; c < columns; c++) {
+      const species = current[oldBottom]![c];
+      if (species && crawling.has(species as Crawling)) {
+        current[newBottom]![c] = species;
+        current[oldBottom]![c] = null;
+      }
+    }
+  }
+};
+
+const preservePositions = (
+  rows: number,
+  columns: number,
+  current: Positions,
+  newCurrent: Positions,
+  bubbles: Positions,
+  newBubbles: Positions,
+) => {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < columns; c++) {
+      newCurrent[r]![c] = current[r]![c]!;
+      newBubbles[r]![c] = bubbles[r]![c]!;
+    }
+  }
+};
 
 const render = (
   rows: number,
@@ -68,7 +137,7 @@ const hasNeighbor = (
   return false;
 };
 
-const tick = (
+const tickAnimals = (
   rows: number,
   columns: number,
   positions: Positions,
@@ -89,9 +158,8 @@ const tick = (
         continue;
       }
 
-      const newCol = column - 1;
-
-      if (newCol < 0) continue;
+      const newColumn = column - 1;
+      if (newColumn < 0) continue;
 
       let newRow = row;
       if (isSwimming && Math.random() * 2 < variance) {
@@ -99,9 +167,9 @@ const tick = (
       }
 
       if (newRow < 0 || newRow >= (isSwimming ? rows - 2 : rows)) continue;
-      if (hasNeighbor(next, newRow, newCol)) continue;
+      if (hasNeighbor(next, newRow, newColumn)) continue;
 
-      next[newRow]![newCol] = species;
+      next[newRow]![newColumn] = species;
     }
   }
 
@@ -112,17 +180,17 @@ const tickBubbles = (
   rows: number,
   columns: number,
   bubbles: Positions,
-  positions: Positions,
 ): Positions => {
   const next = createGrid(rows, columns);
   for (let row = 0; row < bubbles.length; row++) {
-    for (let col = 0; col < bubbles[row]!.length; col++) {
-      if (!bubbles[row]![col]) continue;
+    for (let column = 0; column < bubbles[row]!.length; column++) {
+      if (!bubbles[row]![column]) continue;
       const newRow = row - 1;
       if (newRow < 0) continue;
-      next[newRow]![col] = "🫧";
+      next[newRow]![column] = "🫧";
     }
   }
+
   return next;
 };
 
@@ -135,11 +203,10 @@ export const stream = (
   let lastColumns = columns;
   let lastRows = rows;
   let current = createGrid(rows, columns);
-  const initialSpawn = randomSpawn(rows, columns);
-  current[initialSpawn.row]![initialSpawn.col] = initialSpawn.entity;
   let bubbles = createGrid(rows, columns);
   let tickCount = 0;
 
+  randomSpawn(rows, columns, current);
   writable.write("\x1B[?25l");
 
   return setInterval(() => {
@@ -148,29 +215,22 @@ export const stream = (
     if (rows !== lastRows || columns !== lastColumns) {
       const newCurrent = createGrid(rows, columns);
       const newBubbles = createGrid(rows, columns);
-      const minR = Math.min(lastRows, rows);
-      const minC = Math.min(lastColumns, columns);
+      const minimumRow = Math.min(lastRows, rows);
+      const minimumColumn = Math.min(lastColumns, columns);
 
-      for (let r = 0; r < minR; r++) {
-        for (let c = 0; c < minC; c++) {
-          newCurrent[r]![c] = current[r]![c]!;
-          newBubbles[r]![c] = bubbles[r]![c]!;
-        }
-      }
+      preservePositions(
+        minimumRow,
+        minimumColumn,
+        current,
+        newCurrent,
+        bubbles,
+        newBubbles,
+      );
 
       if (rows !== lastRows) {
-        const oldBottom = lastRows - 1;
-        const newBottom = rows - 1;
-        if (oldBottom < rows) {
-          for (let c = 0; c < minC; c++) {
-            const species = newCurrent[oldBottom]![c];
-            if (species && crawling.has(species as Crawling)) {
-              newCurrent[newBottom]![c] = species;
-              newCurrent[oldBottom]![c] = null;
-            }
-          }
-        }
+        moveToBottom(lastRows, rows, minimumColumn, newCurrent);
       }
+
       current = newCurrent;
       bubbles = newBubbles;
     }
@@ -178,33 +238,12 @@ export const stream = (
     lastColumns = columns;
     lastRows = rows;
 
-    if (Math.random() <= variance) {
-      const spawn = randomSpawn(rows, columns);
-      if (!hasNeighbor(current, spawn.row, spawn.col)) {
-        current[spawn.row]![spawn.col] = spawn.entity;
-      }
-    }
+    spawnSwimming(rows, columns, current);
+    spawnCrawling(rows, columns, current);
+    spawnBubbles(rows, columns, bubbles);
 
-    if (Math.random() <= variance / 6) {
-      const bottom = rows - 1;
-      if (!hasNeighbor(current, bottom, columns - 1)) {
-        current[bottom]![columns - 1] = crawling
-          .values()
-          .drop(Math.floor(Math.random() * crawling.size))
-          .next().value as Crawling;
-      }
-    }
-
-    if (Math.random() <= variance / 2) {
-      const bubbleRow = rows - 2;
-      const bubbleCol = Math.floor(Math.random() * columns);
-      if (!bubbles[bubbleRow]![bubbleCol]) {
-        bubbles[bubbleRow]![bubbleCol] = "🫧";
-      }
-    }
-
-    bubbles = tickBubbles(rows, columns, bubbles, current);
-    current = tick(rows, columns, current, tickCount);
+    bubbles = tickBubbles(rows, columns, bubbles);
+    current = tickAnimals(rows, columns, current, tickCount);
     tickCount++;
 
     writable.write("\x1B[H" + render(rows, columns, current, bubbles));
