@@ -1,3 +1,5 @@
+host_key
+
 # dependencies (bun install)
 node_modules
 

@@ -1,62 +1,49 @@
+import type { Writable } from "stream";
+
 type Swimming = "🐟" | "🐠" | "🐡";
 type Crawling = "🦀";
 type Vegetation = "🌱";
 type Bubble = "🫧";
-type Positions = {
-  [row: number]: {
-    [column: number]: Swimming | Crawling | Vegetation | Bubble;
-  };
-};
+type Entity = Swimming | Crawling | Vegetation | Bubble;
+type Positions = (Entity | null)[][];
 
-const swimming: Swimming[] = ["🐟", "🐠", "🐡"] as const;
-const crawling: Crawling[] = ["🦀"] as const;
-const vegetation: Vegetation[] = ["🌱"] as const;
-const bubble: Bubble[] = ["🫧"] as const;
+const createGrid = (rows: number, columns: number): Positions =>
+  Array.from({ length: rows }, () =>
+    new Array<Entity | null>(columns).fill(null),
+  );
+
+const swimming: Set<Swimming> = new Set(["🐟", "🐠", "🐡"]);
+const crawling: Set<Crawling> = new Set(["🦀"]);
+const bubble: Set<Bubble> = new Set(["🫧"]);
 
 const variance = 0.15;
-const time = 100;
+const time = 180;
 
-const placeVegetation = (rows: number, columns: number): Positions => {
-  const positions: Positions = {};
-  const bottom = rows - 1;
-  positions[bottom] = {};
-  for (let c = 0; c < columns; c++) {
-    if (Math.random() < variance / 2.5) {
-      const v = vegetation[Math.floor(Math.random() * vegetation.length)];
-
-      if (v) {
-        positions[bottom][c] = v;
-      }
-    }
-  }
-  return positions;
-};
-
-const initial = (rows: number, columns: number): Positions => ({
-  [Math.floor(Math.random() * (rows - 2))]: {
-    [columns - 1]: swimming[
-      Math.floor(Math.random() * swimming.length)
-    ] as Swimming,
-  },
+const randomSpawn = (rows: number, columns: number) => ({
+  row: Math.floor(Math.random() * (rows - 2)),
+  col: columns - 1,
+  entity: swimming
+    .values()
+    .drop(Math.floor(Math.random() * swimming.size))
+    .next().value as Swimming,
 });
 
 const render = (
   rows: number,
   columns: number,
   positions: Positions,
-  flora: Positions,
   bubbles: Positions,
 ): string => {
-  let output = "";
+  const parts: string[] = [];
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < columns; c++) {
-      output += flora[r]?.[c] ?? bubbles[r]?.[c] ?? positions[r]?.[c] ?? "  ";
+      parts.push(bubbles[r]?.[c] ?? positions[r]?.[c] ?? "  ");
     }
-    if (r < rows - 1) output += "\n";
+    if (r < rows - 1) parts.push("\r\n");
   }
 
-  return output;
+  return parts.join("");
 };
 
 const hasNeighbor = (
@@ -68,7 +55,12 @@ const hasNeighbor = (
     for (let dc = -1; dc <= 1; dc++) {
       if (dr === 0 && dc === 0) continue;
       const neighbor = positions[row + dr]?.[col + dc];
-      if (neighbor && !vegetation.includes(neighbor as Vegetation)) return true;
+      if (
+        neighbor &&
+        !swimming.has(neighbor as Swimming) &&
+        !crawling.has(neighbor as Crawling)
+      )
+        return true;
     }
   }
   return false;
@@ -76,24 +68,22 @@ const hasNeighbor = (
 
 const tick = (
   rows: number,
+  columns: number,
   positions: Positions,
   tickCount: number,
 ): Positions => {
-  const next: Positions = {};
+  const next = createGrid(rows, columns);
 
-  for (const row of Object.keys(positions).map(Number)) {
-    if (!positions[row]) continue;
+  for (let row = 0; row < positions.length; row++) {
+    for (let col = 0; col < positions[row]!.length; col++) {
+      const species = positions[row]![col];
+      if (!species) continue;
+      if (bubble.has(species as Bubble)) continue;
 
-    for (const col of Object.keys(positions[row]).map(Number)) {
-      const species = positions[row][col];
-      if (vegetation.includes(species as Vegetation)) continue;
-      if (bubble.includes(species as Bubble)) continue;
-
-      const isSwimming = swimming.includes(species as Swimming);
+      const isSwimming = swimming.has(species as Swimming);
 
       if (!isSwimming && tickCount % 3 !== 0) {
-        if (!next[row]) next[row] = {};
-        next[row]![col] = species!;
+        next[row]![col] = species;
         continue;
       }
 
@@ -107,11 +97,9 @@ const tick = (
       }
 
       if (newRow < 0 || newRow >= (isSwimming ? rows - 2 : rows)) continue;
-      if (!species) continue;
 
       if (hasNeighbor(next, newRow, newCol)) continue;
 
-      if (!next[newRow]) next[newRow] = {};
       next[newRow]![newCol] = species;
     }
   }
@@ -121,16 +109,16 @@ const tick = (
 
 const tickBubbles = (
   rows: number,
+  columns: number,
   bubbles: Positions,
   positions: Positions,
 ): Positions => {
-  const next: Positions = {};
-  for (const row of Object.keys(bubbles).map(Number)) {
-    if (!bubbles[row]) continue;
-    for (const col of Object.keys(bubbles[row]).map(Number)) {
+  const next = createGrid(rows, columns);
+  for (let row = 0; row < bubbles.length; row++) {
+    for (let col = 0; col < bubbles[row]!.length; col++) {
+      if (!bubbles[row]![col]) continue;
       const newRow = row - 1;
       if (newRow < 0) continue;
-      if (!next[newRow]) next[newRow] = {};
       next[newRow]![col] = "🫧";
     }
   }
@@ -138,90 +126,84 @@ const tickBubbles = (
 };
 
 export const stream = (
+  writable: Writable,
   rows: number,
   columns: number,
-  getDimensions: () => { rows: number; columns: number },
+  dimensions: () => [rows: number, columns: number],
 ) => {
   let lastColumns = columns;
   let lastRows = rows;
-  const flora = placeVegetation(rows, columns);
-  let current: Positions = initial(rows, columns);
-  let bubbles: Positions = {};
+  let current = createGrid(rows, columns);
+  const initialSpawn = randomSpawn(rows, columns);
+  current[initialSpawn.row]![initialSpawn.col] = initialSpawn.entity;
+  let bubbles = createGrid(rows, columns);
   let tickCount = 0;
 
-  setInterval(() => {
-    const dims = getDimensions();
-    const rows = dims.rows;
-    const columns = dims.columns;
+  writable.write("\x1B[?25l");
 
-    if (columns > lastColumns) {
-      const bottom = rows - 1;
-      if (!flora[bottom]) flora[bottom] = {};
-      for (let c = lastColumns; c < columns; c++) {
-        if (Math.random() < variance / 4) {
-          const v = vegetation[Math.floor(Math.random() * vegetation.length)];
-          if (v) flora[bottom][c] = v;
+  return setInterval(() => {
+    const [rows, columns] = dimensions();
+
+    if (rows !== lastRows || columns !== lastColumns) {
+      const newCurrent = createGrid(rows, columns);
+      const newBubbles = createGrid(rows, columns);
+      const minR = Math.min(lastRows, rows);
+      const minC = Math.min(lastColumns, columns);
+      for (let r = 0; r < minR; r++) {
+        for (let c = 0; c < minC; c++) {
+          newCurrent[r]![c] = current[r]![c]!;
+          newBubbles[r]![c] = bubbles[r]![c]!;
         }
       }
-    }
-
-    if (rows !== lastRows) {
-      const oldBottom = lastRows - 1;
-      const newBottom = rows - 1;
-      if (flora[oldBottom] && oldBottom !== newBottom) {
-        flora[newBottom] = flora[oldBottom];
-        delete flora[oldBottom];
-      }
-      if (current[oldBottom] && oldBottom !== newBottom) {
-        if (!current[newBottom]) current[newBottom] = {};
-        for (const col of Object.keys(current[oldBottom]).map(Number)) {
-          const species = current[oldBottom][col];
-          if (species && crawling.includes(species as Crawling)) {
-            current[newBottom][col] = species;
-            delete current[oldBottom][col];
+      if (rows !== lastRows) {
+        const oldBottom = lastRows - 1;
+        const newBottom = rows - 1;
+        if (oldBottom < rows) {
+          for (let c = 0; c < minC; c++) {
+            const species = newCurrent[oldBottom]![c];
+            if (species && crawling.has(species as Crawling)) {
+              newCurrent[newBottom]![c] = species;
+              newCurrent[oldBottom]![c] = null;
+            }
           }
         }
       }
+      current = newCurrent;
+      bubbles = newBubbles;
     }
 
     lastColumns = columns;
     lastRows = rows;
 
     if (Math.random() <= variance) {
-      const spawn = initial(rows, columns);
-      for (const r of Object.keys(spawn).map(Number)) {
-        if (!spawn[r]) continue;
-        const cols = Object.keys(spawn[r]).map(Number);
-        if (cols.some((c) => hasNeighbor(current, r, c))) continue;
-        if (!current[r]) current[r] = {};
-        Object.assign(current[r], spawn[r]);
+      const spawn = randomSpawn(rows, columns);
+      if (!hasNeighbor(current, spawn.row, spawn.col)) {
+        current[spawn.row]![spawn.col] = spawn.entity;
       }
     }
 
     if (Math.random() <= variance / 6) {
       const bottom = rows - 1;
       if (!hasNeighbor(current, bottom, columns - 1)) {
-        if (!current[bottom]) current[bottom] = {};
-        current[bottom][columns - 1] = crawling[
-          Math.floor(Math.random() * crawling.length)
-        ] as Crawling;
+        current[bottom]![columns - 1] = crawling
+          .values()
+          .drop(Math.floor(Math.random() * crawling.size))
+          .next().value as Crawling;
       }
     }
 
     if (Math.random() <= variance / 2) {
       const bubbleRow = rows - 2;
       const bubbleCol = Math.floor(Math.random() * columns);
-      if (!bubbles[bubbleRow]) bubbles[bubbleRow] = {};
-      if (!bubbles[bubbleRow][bubbleCol]) {
-        bubbles[bubbleRow][bubbleCol] = "🫧";
+      if (!bubbles[bubbleRow]![bubbleCol]) {
+        bubbles[bubbleRow]![bubbleCol] = "🫧";
       }
     }
 
-    bubbles = tickBubbles(rows, bubbles, current);
-    current = tick(rows, current, tickCount);
+    bubbles = tickBubbles(rows, columns, bubbles, current);
+    current = tick(rows, columns, current, tickCount);
     tickCount++;
 
-    process.stdout.write("\x1B[H");
-    process.stdout.write(render(rows, columns, current, flora, bubbles));
+    writable.write("\x1B[H" + render(rows, columns, current, bubbles));
   }, time);
 };

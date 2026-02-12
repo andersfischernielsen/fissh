@@ -1,15 +1,19 @@
 {
   "name": "fissh",
-  "module": "index.ts",
+  "module": "main.ts",
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/ssh2": "^1.15.5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "ssh2": "^1.17.0"
+  },
+  "scripts": {
+    "start": "bun run main.ts"
   }
 }
