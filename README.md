@@ -5,10 +5,10 @@ Fish in your terminal.
 To see it in action:
 
 ```sh
-ssh isitafi.sh
+ssh -p 2222 isitafi.sh
 
 # depending on your SSH config, you may need to specify:
-ssh -t isitafi.sh
+ssh -t -p 2222 isitafi.sh
 ```
 
 ---
