@@ -28,7 +28,7 @@ bun install
 To run:
 
 ```sh
-bun run index.ts
+bun run main.ts
 ```
 
 Modify `main.ts` to change the renderer. Over SSH, view the rendering at `ssh localhost`.
