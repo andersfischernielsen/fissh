@@ -7,5 +7,5 @@ RUN bun install
 
 COPY --chown=bun:bun main.ts fish.ts ssh.ts host_key /fissh
 
-EXPOSE 3000
+EXPOSE 2222
 ENTRYPOINT [ "bun", "run", "start" ]
