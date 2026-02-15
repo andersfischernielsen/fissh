@@ -62,39 +62,43 @@ const spawnBubbles = (rows: number, columns: number, bubbles: Positions) => {
   }
 };
 
-const moveToBottom = (
-  lastBottom: number,
-  bottom: number,
-  columns: number,
+const resize = (
+  oldRows: number,
+  oldColumns: number,
+  newRows: number,
+  newColumns: number,
   current: Positions,
-) => {
-  const oldBottom = lastBottom - 1;
-  const newBottom = bottom - 1;
-  if (oldBottom < bottom) {
-    for (let c = 0; c < columns; c++) {
+  bubbles: Positions,
+): [Positions, Positions] => {
+  const newCurrent = createGrid(newRows, newColumns);
+  const newBubbles = createGrid(newRows, newColumns);
+  const minCols = Math.min(oldColumns, newColumns);
+  const minRows = Math.min(oldRows, newRows);
+  const oldBottom = oldRows - 1;
+  const newBottom = newRows - 1;
+
+  for (let r = 0; r < minRows; r++) {
+    for (let c = 0; c < minCols; c++) {
+      const species = current[r]![c];
+      if (species && crawling.has(species as Crawling)) {
+        newCurrent[newBottom]![c] = species;
+      } else {
+        newCurrent[r]![c] = species ?? null;
+      }
+      newBubbles[r]![c] = bubbles[r]![c] ?? null;
+    }
+  }
+
+  if (oldBottom >= minRows) {
+    for (let c = 0; c < minCols; c++) {
       const species = current[oldBottom]![c];
       if (species && crawling.has(species as Crawling)) {
-        current[newBottom]![c] = species;
-        current[oldBottom]![c] = null;
+        newCurrent[newBottom]![c] = species;
       }
     }
   }
-};
 
-const preservePositions = (
-  rows: number,
-  columns: number,
-  current: Positions,
-  newCurrent: Positions,
-  bubbles: Positions,
-  newBubbles: Positions,
-) => {
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < columns; c++) {
-      newCurrent[r]![c] = current[r]![c]!;
-      newBubbles[r]![c] = bubbles[r]![c]!;
-    }
-  }
+  return [newCurrent, newBubbles];
 };
 
 const render = (
@@ -213,26 +217,14 @@ export const stream = (
     const [rows, columns] = dimensions();
 
     if (rows !== lastRows || columns !== lastColumns) {
-      const newCurrent = createGrid(rows, columns);
-      const newBubbles = createGrid(rows, columns);
-      const minimumRow = Math.min(lastRows, rows);
-      const minimumColumn = Math.min(lastColumns, columns);
-
-      preservePositions(
-        minimumRow,
-        minimumColumn,
+      [current, bubbles] = resize(
+        lastRows,
+        lastColumns,
+        rows,
+        columns,
         current,
-        newCurrent,
         bubbles,
-        newBubbles,
       );
-
-      if (rows !== lastRows) {
-        moveToBottom(lastRows, rows, minimumColumn, newCurrent);
-      }
-
-      current = newCurrent;
-      bubbles = newBubbles;
     }
 
     lastColumns = columns;

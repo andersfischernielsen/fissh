@@ -8,14 +8,24 @@ import { stream } from "./fish";
 
 const privateKey = await Bun.file("host_key").text();
 
+const maxConnections = 2000;
+let activeConnections = 0;
+
 const connection: ServerConnectionListener = (
   connection: Connection,
   _: ClientInfo,
 ) => {
+  const isAtCapacity = activeConnections >= maxConnections;
+  if (!isAtCapacity) {
+    activeConnections++;
+    connection.on("close", () => activeConnections--);
+  }
+
   let columns: number = NaN;
   let rows: number = NaN;
 
   connection.on("authentication", (c) => c.accept());
+  connection.on("error", () => {});
   connection.on("session", (accept) => {
     const session = accept();
 
@@ -25,14 +35,22 @@ const connection: ServerConnectionListener = (
       accept();
     });
 
-    session.on("window-change", (accept, _, info) => {
+    session.on("window-change", (_, __, info) => {
       rows = info.rows;
       columns = Math.floor(info.cols / 2);
-      accept();
     });
 
     session.on("shell", (accept) => {
       const channel = accept();
+
+      if (isAtCapacity) {
+        channel.write(
+          "\r\n🐟 Too many concurrent connections! Try again later.\r\n\r\n",
+        );
+        channel.end();
+        return;
+      }
+
       const interval = stream(channel, rows, columns, () => [rows, columns]);
 
       channel.on("data", (data: Buffer) => {
