@@ -2,12 +2,18 @@
 
 Fish in your terminal.
 
+---
+
+![fish.gif](fish.gif)
+
+---
+
 To see it in action:
 
 ```sh
 ssh -p 2222 isitafi.sh
 
-# depending on your SSH config, you may need to specify:
+# Depending on your SSH configuration, you may need to specify:
 ssh -t -p 2222 isitafi.sh
 ```
 
