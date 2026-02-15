@@ -31,4 +31,4 @@ To run:
 bun run index.ts
 ```
 
-Modify `main.ts` to change the renderer. Over SSH, view the rendering at `ssh -p 2222 localhost`.
+Modify `main.ts` to change the renderer. Over SSH, view the rendering at `ssh localhost`.

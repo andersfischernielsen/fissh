@@ -78,5 +78,5 @@ const connection: ServerConnectionListener = (
 };
 
 export const start = () => {
-  new Server({ hostKeys: [privateKey] }, connection).listen(2222);
+  new Server({ hostKeys: [privateKey] }, connection).listen(22);
 };
