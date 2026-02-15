@@ -13,12 +13,22 @@ let activeConnections = 0;
 
 const connection: ServerConnectionListener = (
   connection: Connection,
-  _: ClientInfo,
+  info: ClientInfo,
 ) => {
+  const { ip } = info;
+  console.log(`Connected: ${ip} (${activeConnections + 1} active)`);
+
   const isAtCapacity = activeConnections >= maxConnections;
   if (!isAtCapacity) {
     activeConnections++;
-    connection.on("close", () => activeConnections--);
+    connection.on("close", () => {
+      activeConnections--;
+      console.log(`Closed: ${ip} (${activeConnections} active)`);
+    });
+  } else {
+    connection.on("close", () => {
+      console.log(`Closed: ${ip} (rejected, at capacity)`);
+    });
   }
 
   let columns: number = NaN;
