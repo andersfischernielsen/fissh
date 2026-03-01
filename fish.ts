@@ -6,6 +6,7 @@ type Vegetation = "🌱";
 type Bubble = "🫧";
 type Entity = Swimming | Crawling | Vegetation | Bubble;
 type Positions = (Entity | null)[][];
+type Diff = { r: number; c: number; text: string };
 
 const createGrid = (rows: number, columns: number): Positions =>
   Array.from({ length: rows }, () =>
@@ -36,7 +37,6 @@ const randomSpawn = (rows: number, columns: number, current: Positions) => {
 
 const spawnSwimming = (rows: number, columns: number, current: Positions) => {
   if (!shouldSpawnSwimming()) return;
-
   randomSpawn(rows, columns, current);
 };
 
@@ -198,6 +198,58 @@ const tickBubbles = (
   return next;
 };
 
+const cellText = (
+  r: number,
+  c: number,
+  positions: Positions,
+  bubbles: Positions,
+  cellWidth = 2,
+): string => {
+  const v = bubbles[r]?.[c] ?? positions[r]?.[c] ?? null;
+  if (!v) return "  ";
+  return (v + " ").slice(0, cellWidth);
+};
+
+const diff = (
+  rows: number,
+  cols: number,
+  prev: string[],
+  next: string[],
+): Diff[] => {
+  const out: Diff[] = [];
+  const n = rows * cols;
+  for (let i = 0; i < n; i++) {
+    if (prev[i] !== next[i]) {
+      const r = Math.floor(i / cols);
+      const c = i - r * cols;
+      out.push({ r, c, text: next[i]! });
+    }
+  }
+  return out;
+};
+
+const compose = (
+  rows: number,
+  cols: number,
+  positions: Positions,
+  bubbles: Positions,
+): string[] => {
+  const flat = new Array<string>(rows * cols);
+  let i = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      flat[i++] = cellText(r, c, positions, bubbles);
+    }
+  }
+  return flat;
+};
+
+const moveCursor = (row0: number, col0: number, cellWidth = 2): string => {
+  const row = row0 + 1;
+  const col = col0 * cellWidth + 1;
+  return `\x1B[${row};${col}H`;
+};
+
 export const stream = (
   writable: Writable,
   rows: number,
@@ -211,11 +263,20 @@ export const stream = (
   let tickCount = 0;
 
   randomSpawn(rows, columns, current);
+
   writable.write("\x1B[?25l");
 
-  return setInterval(() => {
+  {
+    const initial = "\x1B[H" + render(rows, columns, current, bubbles);
+    writable.write(initial);
+  }
+
+  let previous = compose(rows, columns, current, bubbles);
+
+  const interval = setInterval(() => {
     const [rows, columns] = dimensions();
 
+    let resized = false;
     if (rows !== lastRows || columns !== lastColumns) {
       [current, bubbles] = resize(
         lastRows,
@@ -225,6 +286,7 @@ export const stream = (
         current,
         bubbles,
       );
+      resized = true;
     }
 
     lastColumns = columns;
@@ -238,6 +300,22 @@ export const stream = (
     current = tickAnimals(rows, columns, current, tickCount);
     tickCount++;
 
-    writable.write("\x1B[H" + render(rows, columns, current, bubbles));
+    if (resized) {
+      const frame = "\x1B[H" + render(rows, columns, current, bubbles);
+      writable.write(frame);
+      previous = compose(rows, columns, current, bubbles);
+      return;
+    }
+
+    const next = compose(rows, columns, current, bubbles);
+    const diffs = diff(rows, columns, previous, next);
+
+    let out = "";
+    for (const d of diffs) out += moveCursor(d.r, d.c) + d.text;
+
+    if (out.length > 0) writable.write(out);
+    previous = next;
   }, time);
+
+  return interval;
 };
