@@ -1,0 +1,6 @@
+services:
+  fissh:
+    build: .
+    ports:
+      - "22:22"
+    restart: "always"
