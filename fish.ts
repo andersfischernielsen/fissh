@@ -15,11 +15,6 @@ const bubble: Set<Bubble> = new Set(["🫧"]);
 const variance = 0.2;
 const tickRate = 140;
 
-const createGrid = (rows: number, columns: number): Positions =>
-  Array.from({ length: rows }, () =>
-    new Array<Entity | null>(columns).fill(null),
-  );
-
 const shouldSpawnSwimming = () => Math.random() <= variance;
 const shouldSpawnCrawling = () => Math.random() <= variance / 6;
 const shouldSpawnBubble = () => Math.random() <= variance / 2;
@@ -62,7 +57,12 @@ const spawnBubbles = (rows: number, columns: number, bubbles: Positions) => {
   }
 };
 
-const resize = (
+export const createGrid = (rows: number, columns: number): Positions =>
+  Array.from({ length: rows }, () =>
+    new Array<Entity | null>(columns).fill(null),
+  );
+
+export const resize = (
   oldRows: number,
   oldColumns: number,
   newRows: number,
@@ -101,7 +101,7 @@ const resize = (
   return [newCurrent, newBubbles];
 };
 
-const refresh = (
+export const refresh = (
   rows: number,
   columns: number,
   positions: Positions,
@@ -119,7 +119,7 @@ const refresh = (
   return parts.join("");
 };
 
-const hasNeighbor = (
+export const hasNeighbor = (
   positions: Positions,
   row: number,
   column: number,
@@ -141,7 +141,7 @@ const hasNeighbor = (
   return false;
 };
 
-const tickFish = (
+export const tickFish = (
   rows: number,
   columns: number,
   positions: Positions,
@@ -188,7 +188,7 @@ const tickFish = (
   return next;
 };
 
-const tickBubbles = (
+export const tickBubbles = (
   rows: number,
   columns: number,
   bubbles: Positions,
@@ -207,7 +207,7 @@ const tickBubbles = (
   return next;
 };
 
-const diff = (
+export const diff = (
   rows: number,
   cols: number,
   prev: string[],
@@ -226,7 +226,7 @@ const diff = (
   return diff;
 };
 
-const compose = (
+export const compose = (
   rows: number,
   cols: number,
   positions: Positions,
@@ -249,7 +249,11 @@ const compose = (
   return flat;
 };
 
-const moveCursor = (row: number, column: number, cellWidth = 2): string => {
+export const moveCursor = (
+  row: number,
+  column: number,
+  cellWidth = 2,
+): string => {
   return `\x1B[${row + 1};${column * cellWidth + 1}H`;
 };
 

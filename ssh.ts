@@ -2,7 +2,6 @@ import {
   Server,
   type ClientInfo,
   type Connection,
-  type ServerChannel,
   type ServerConnectionListener,
 } from "ssh2";
 import { render } from "./fish";
