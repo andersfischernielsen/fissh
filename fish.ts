@@ -148,17 +148,21 @@ const tickFish = (
   tickCount: number,
 ): Positions => {
   const next = createGrid(rows, columns);
+  const bottomCutoff = rows - 2;
 
   for (let row = 0; row < positions.length; row++) {
-    for (let column = 0; column < positions[row]!.length; column++) {
-      const species = positions[row]![column];
+    const positionsRow = positions[row]!;
+    const nextRow = next[row]!;
+
+    for (let column = 0; column < positionsRow.length; column++) {
+      const species = positionsRow[column];
       if (!species) continue;
       if (bubble.has(species as Bubble)) continue;
 
       const isSwimming = swimming.has(species as Swimming);
 
       if (!isSwimming && tickCount % 3 !== 0) {
-        next[row]![column] = species;
+        nextRow[column] = species;
         continue;
       }
 
@@ -171,7 +175,7 @@ const tickFish = (
       }
 
       if (newRow < 0) continue;
-      if (isSwimming && newRow >= rows - 2) {
+      if (isSwimming && newRow >= bottomCutoff) {
         newRow = row;
       }
 
@@ -191,10 +195,11 @@ const tickBubbles = (
 ): Positions => {
   const next = createGrid(rows, columns);
   for (let row = 0; row < bubbles.length; row++) {
-    for (let column = 0; column < bubbles[row]!.length; column++) {
-      if (!bubbles[row]![column]) continue;
-      const newRow = row - 1;
-      if (newRow < 0) continue;
+    const positionsRow = bubbles[row]!;
+    const newRow = row - 1;
+
+    for (let column = 0; column < positionsRow.length; column++) {
+      if (!positionsRow[column] || newRow < 0) continue;
       next[newRow]![column] = "🫧";
     }
   }

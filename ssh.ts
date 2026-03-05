@@ -41,14 +41,14 @@ const connection: ServerConnectionListener = (
     const session = accept();
 
     session.on("pty", (accept, _, info) => {
-      columns = Math.floor(info.cols);
+      columns = Math.floor(info.cols / 2);
       rows = info.rows;
       accept();
     });
 
     session.on("window-change", (_, __, info) => {
+      columns = Math.floor(info.cols / 2);
       rows = info.rows;
-      columns = Math.floor(info.cols);
     });
 
     session.on("shell", (accept) => {
