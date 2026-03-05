@@ -259,7 +259,7 @@ describe("Performance", () => {
   const rows = 200;
 
   it("ticks efficiently", () => {
-    const iterations = 100;
+    const iterations = 1000;
 
     const grid = createGrid(rows, columns);
     grid[10]![40] = "🐟";
@@ -271,14 +271,14 @@ describe("Performance", () => {
     }
     const elapsed = performance.now() - start;
 
-    console.log(`tickFish x${iterations}}: ${elapsed.toFixed(2)}ms`);
+    console.log(`tickFish x${iterations}: ${elapsed.toFixed(2)}ms`);
     console.log(`tickFish average: ${(elapsed / iterations).toFixed(2)}ms`);
 
     expect(elapsed).toBeLessThan(1000);
   });
 
   it("composes efficiently", () => {
-    const iterations = 1000;
+    const iterations = 5000;
 
     const positions = createGrid(rows, columns);
     const bubbles = createGrid(rows, columns);
@@ -296,7 +296,7 @@ describe("Performance", () => {
   });
 
   it("diffs efficiently", () => {
-    const iterations = 1000;
+    const iterations = 2000;
     const prev = new Array(1920).fill("  ");
     const next = new Array(1920).fill("  ");
     next[500] = "🐟";
