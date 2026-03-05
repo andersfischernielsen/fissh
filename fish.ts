@@ -12,7 +12,7 @@ const swimming: Set<Swimming> = new Set(["🐟", "🐠", "🐡"]);
 const crawling: Set<Crawling> = new Set(["🦀"]);
 const bubble: Set<Bubble> = new Set(["🫧"]);
 
-const variance = 0.15;
+const variance = 0.2;
 const tickRate = 140;
 
 const createGrid = (rows: number, columns: number): Positions =>
@@ -207,18 +207,6 @@ const tickBubbles = (
   return next;
 };
 
-const cellText = (
-  r: number,
-  c: number,
-  positions: Positions,
-  bubbles: Positions,
-  cellWidth = 2,
-): string => {
-  const v = bubbles[r]?.[c] ?? positions[r]?.[c] ?? null;
-  if (!v) return "  ";
-  return (v + " ").slice(0, cellWidth);
-};
-
 const diff = (
   rows: number,
   cols: number,
@@ -243,21 +231,26 @@ const compose = (
   cols: number,
   positions: Positions,
   bubbles: Positions,
+  cellWidth = 2,
 ): string[] => {
   const flat = new Array<string>(rows * cols);
   let i = 0;
   for (let r = 0; r < rows; r++) {
+    const positionsRow = positions[r]!;
+    const bubblesRow = bubbles[r]!;
     for (let c = 0; c < cols; c++) {
-      flat[i++] = cellText(r, c, positions, bubbles);
+      const v = bubblesRow[c] ?? positionsRow[c];
+
+      if (!v) flat[i++] = "  ";
+      else flat[i++] = (v + " ").slice(0, cellWidth);
     }
   }
+
   return flat;
 };
 
-const moveCursor = (row0: number, col0: number, cellWidth = 2): string => {
-  const row = row0 + 1;
-  const col = col0 * cellWidth + 1;
-  return `\x1B[${row};${col}H`;
+const moveCursor = (row: number, column: number, cellWidth = 2): string => {
+  return `\x1B[${row + 1};${column * cellWidth + 1}H`;
 };
 
 export const render = (
