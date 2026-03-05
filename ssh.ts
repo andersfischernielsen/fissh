@@ -2,9 +2,10 @@ import {
   Server,
   type ClientInfo,
   type Connection,
+  type ServerChannel,
   type ServerConnectionListener,
 } from "ssh2";
-import { stream } from "./fish";
+import { render } from "./fish";
 
 const privateKey = await Bun.file("host_key").text();
 
@@ -40,14 +41,14 @@ const connection: ServerConnectionListener = (
     const session = accept();
 
     session.on("pty", (accept, _, info) => {
-      columns = Math.floor(info.cols / 2);
+      columns = Math.floor(info.cols);
       rows = info.rows;
       accept();
     });
 
     session.on("window-change", (_, __, info) => {
       rows = info.rows;
-      columns = Math.floor(info.cols / 2);
+      columns = Math.floor(info.cols);
     });
 
     session.on("shell", (accept) => {
@@ -61,16 +62,22 @@ const connection: ServerConnectionListener = (
         return;
       }
 
-      const interval = stream(channel, rows, columns, () => [rows, columns]);
+      const { interval, closeWritable } = render(channel, rows, columns, () => [
+        rows,
+        columns,
+      ]);
 
       channel.on("data", (data: Buffer) => {
         if (data[0] === 0x03 || data[0] === 0x04) {
+          closeWritable(channel);
           clearInterval(interval);
           channel.end();
         }
       });
 
-      channel.on("close", () => clearInterval(interval));
+      channel.on("close", () => {
+        clearInterval(interval);
+      });
     });
   });
 

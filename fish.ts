@@ -6,19 +6,19 @@ type Vegetation = "🌱";
 type Bubble = "🫧";
 type Entity = Swimming | Crawling | Vegetation | Bubble;
 type Positions = (Entity | null)[][];
-type Diff = { r: number; c: number; text: string };
-
-const createGrid = (rows: number, columns: number): Positions =>
-  Array.from({ length: rows }, () =>
-    new Array<Entity | null>(columns).fill(null),
-  );
+type Diff = { row: number; column: number; text: string };
 
 const swimming: Set<Swimming> = new Set(["🐟", "🐠", "🐡"]);
 const crawling: Set<Crawling> = new Set(["🦀"]);
 const bubble: Set<Bubble> = new Set(["🫧"]);
 
 const variance = 0.15;
-const time = 120;
+const tickRate = 140;
+
+const createGrid = (rows: number, columns: number): Positions =>
+  Array.from({ length: rows }, () =>
+    new Array<Entity | null>(columns).fill(null),
+  );
 
 const shouldSpawnSwimming = () => Math.random() <= variance;
 const shouldSpawnCrawling = () => Math.random() <= variance / 6;
@@ -101,7 +101,7 @@ const resize = (
   return [newCurrent, newBubbles];
 };
 
-const render = (
+const refresh = (
   rows: number,
   columns: number,
   positions: Positions,
@@ -141,7 +141,7 @@ const hasNeighbor = (
   return false;
 };
 
-const tickAnimals = (
+const tickFish = (
   rows: number,
   columns: number,
   positions: Positions,
@@ -166,11 +166,15 @@ const tickAnimals = (
       if (newColumn < 0) continue;
 
       let newRow = row;
-      if (isSwimming && Math.random() * 2 < variance) {
+      if (isSwimming && Math.random() < variance / 2) {
         newRow += Math.random() < 0.5 ? -1 : 1;
       }
 
-      if (newRow < 0 || newRow >= (isSwimming ? rows - 2 : rows)) continue;
+      if (newRow < 0) continue;
+      if (isSwimming && newRow >= rows - 2) {
+        newRow = row;
+      }
+
       if (hasNeighbor(next, newRow, newColumn)) continue;
 
       next[newRow]![newColumn] = species;
@@ -216,16 +220,17 @@ const diff = (
   prev: string[],
   next: string[],
 ): Diff[] => {
-  const out: Diff[] = [];
+  const diff: Diff[] = [];
   const n = rows * cols;
   for (let i = 0; i < n; i++) {
     if (prev[i] !== next[i]) {
       const r = Math.floor(i / cols);
       const c = i - r * cols;
-      out.push({ r, c, text: next[i]! });
+      diff.push({ row: r, column: c, text: next[i]! });
     }
   }
-  return out;
+
+  return diff;
 };
 
 const compose = (
@@ -250,7 +255,7 @@ const moveCursor = (row0: number, col0: number, cellWidth = 2): string => {
   return `\x1B[${row};${col}H`;
 };
 
-export const stream = (
+export const render = (
   writable: Writable,
   rows: number,
   columns: number,
@@ -266,10 +271,8 @@ export const stream = (
 
   writable.write("\x1B[?25l");
 
-  {
-    const initial = "\x1B[H" + render(rows, columns, current, bubbles);
-    writable.write(initial);
-  }
+  const initial = "\x1B[H" + refresh(rows, columns, current, bubbles);
+  writable.write(initial);
 
   let previous = compose(rows, columns, current, bubbles);
 
@@ -297,11 +300,11 @@ export const stream = (
     spawnBubbles(rows, columns, bubbles);
 
     bubbles = tickBubbles(rows, columns, bubbles);
-    current = tickAnimals(rows, columns, current, tickCount);
+    current = tickFish(rows, columns, current, tickCount);
     tickCount++;
 
     if (resized) {
-      const frame = "\x1B[H" + render(rows, columns, current, bubbles);
+      const frame = "\x1B[H" + refresh(rows, columns, current, bubbles);
       writable.write(frame);
       previous = compose(rows, columns, current, bubbles);
       return;
@@ -309,13 +312,23 @@ export const stream = (
 
     const next = compose(rows, columns, current, bubbles);
     const diffs = diff(rows, columns, previous, next);
-
-    let out = "";
-    for (const d of diffs) out += moveCursor(d.r, d.c) + d.text;
+    const out = diffs.reduce(
+      (acc, diff) => acc + moveCursor(diff.row, diff.column) + diff.text,
+      "",
+    );
 
     if (out.length > 0) writable.write(out);
     previous = next;
-  }, time);
+  }, tickRate);
 
-  return interval;
+  const closeWritable = (writable: Writable) => {
+    writable.write("\x1B[2J");
+    writable.write("\x1B[H");
+    writable.write("\x1B[?25h");
+  };
+
+  return {
+    interval,
+    closeWritable,
+  };
 };
