@@ -62,6 +62,13 @@ export const createGrid = (rows: number, columns: number): Positions =>
     new Array<Entity | null>(columns).fill(null),
   );
 
+export const clearGrid = (grid: Positions, rows: number, columns: number) => {
+  for (let r = 0; r < rows; r++) {
+    const row = grid[r]!;
+    for (let c = 0; c < columns; c++) row[c] = null;
+  }
+};
+
 export const resize = (
   oldRows: number,
   oldColumns: number,
@@ -145,16 +152,20 @@ export const tickFish = (
   rows: number,
   columns: number,
   positions: Positions,
+  next: Positions,
   tickCount: number,
 ): Positions => {
-  const next = createGrid(rows, columns);
   const bottomCutoff = rows - 2;
-
-  for (let row = 0; row < positions.length; row++) {
-    const positionsRow = positions[row]!;
+  for (let row = 0; row < rows; row++) {
+    const positionsRow = positions[row];
+    if (!positionsRow) continue;
     const nextRow = next[row]!;
 
-    for (let column = 0; column < positionsRow.length; column++) {
+    for (
+      let column = 0;
+      column < Math.min(positionsRow.length, columns);
+      column++
+    ) {
       const species = positionsRow[column];
       if (!species) continue;
       if (bubble.has(species as Bubble)) continue;
@@ -175,12 +186,14 @@ export const tickFish = (
       }
 
       if (newRow < 0) continue;
+      if (newRow >= rows) continue;
       if (isSwimming && newRow >= bottomCutoff) {
         newRow = row;
       }
 
       if (hasNeighbor(next, newRow, newColumn)) continue;
 
+      if (!next[newRow]) continue;
       next[newRow]![newColumn] = species;
     }
   }
@@ -192,14 +205,20 @@ export const tickBubbles = (
   rows: number,
   columns: number,
   bubbles: Positions,
+  next: Positions,
 ): Positions => {
-  const next = createGrid(rows, columns);
-  for (let row = 0; row < bubbles.length; row++) {
-    const positionsRow = bubbles[row]!;
+  for (let row = 0; row < rows; row++) {
+    const positionsRow = bubbles[row];
+    if (!positionsRow) continue;
     const newRow = row - 1;
 
-    for (let column = 0; column < positionsRow.length; column++) {
-      if (!positionsRow[column] || newRow < 0) continue;
+    for (
+      let column = 0;
+      column < Math.min(positionsRow.length, columns);
+      column++
+    ) {
+      if (!positionsRow[column] || newRow < 0 || newRow >= rows) continue;
+      if (!next[newRow]) continue;
       next[newRow]![column] = "🫧";
     }
   }
@@ -257,26 +276,51 @@ export const moveCursor = (
   return `\x1B[${row + 1};${column * cellWidth + 1}H`;
 };
 
-export const render = (
-  writable: Writable,
-  rows: number,
-  columns: number,
-  dimensions: () => [rows: number, columns: number],
-) => {
+const setup = (columns: number, rows: number, writable: Writable) => {
   let lastColumns = columns;
   let lastRows = rows;
   let current = createGrid(rows, columns);
   let bubbles = createGrid(rows, columns);
+  let nextCurrent = createGrid(rows, columns);
+  let nextBubbles = createGrid(rows, columns);
   let tickCount = 0;
 
   randomSpawn(rows, columns, current);
-
   writable.write("\x1B[?25l");
 
   const initial = "\x1B[H" + refresh(rows, columns, current, bubbles);
   writable.write(initial);
 
   let previous = compose(rows, columns, current, bubbles);
+
+  return {
+    lastRows,
+    lastColumns,
+    current,
+    bubbles,
+    nextCurrent,
+    nextBubbles,
+    tickCount,
+    previous,
+  };
+};
+
+export const render = (
+  writable: Writable,
+  rows: number,
+  columns: number,
+  dimensions: () => [rows: number, columns: number],
+) => {
+  let {
+    lastRows,
+    lastColumns,
+    previous,
+    current,
+    nextCurrent,
+    bubbles,
+    nextBubbles,
+    tickCount,
+  } = setup(columns, rows, writable);
 
   const interval = setInterval(() => {
     const [rows, columns] = dimensions();
@@ -291,6 +335,8 @@ export const render = (
         current,
         bubbles,
       );
+      nextCurrent = createGrid(rows, columns);
+      nextBubbles = createGrid(rows, columns);
       resized = true;
     }
 
@@ -301,8 +347,13 @@ export const render = (
     spawnCrawling(rows, columns, current);
     spawnBubbles(rows, columns, bubbles);
 
-    bubbles = tickBubbles(rows, columns, bubbles);
-    current = tickFish(rows, columns, current, tickCount);
+    clearGrid(nextBubbles, rows, columns);
+    clearGrid(nextCurrent, rows, columns);
+
+    tickBubbles(rows, columns, bubbles, nextBubbles);
+    tickFish(rows, columns, current, nextCurrent, tickCount);
+    [current, nextCurrent] = [nextCurrent, current];
+    [bubbles, nextBubbles] = [nextBubbles, bubbles];
     tickCount++;
 
     if (resized) {
