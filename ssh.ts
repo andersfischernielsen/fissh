@@ -8,7 +8,7 @@ import { render } from "./fish";
 
 const privateKey = await Bun.file("host_key").text();
 
-const maxConnections = 2000;
+const maxConnections = 1000;
 let activeConnections = 0;
 
 const connection: ServerConnectionListener = (
