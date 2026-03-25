@@ -7,6 +7,18 @@ type Bubble = "🫧";
 type Entity = Swimming | Crawling | Vegetation | Bubble;
 type Positions = (Entity | null)[][];
 type Diff = { row: number; column: number; text: string };
+type State = {
+  lastRows: number;
+  lastColumns: number;
+  current: Positions;
+  bubbles: Positions;
+  nextCurrent: Positions;
+  nextBubbles: Positions;
+  tickCount: number;
+  previous: string[];
+  writable: Writable;
+  dimensions: () => [rows: number, columns: number];
+};
 
 const swimming: Set<Swimming> = new Set(["🐟", "🐠", "🐡"]);
 const crawling: Set<Crawling> = new Set(["🦀"]);
@@ -148,7 +160,7 @@ export const hasNeighbor = (
   return false;
 };
 
-export const tickFish = (
+export const moveFish = (
   rows: number,
   columns: number,
   positions: Positions,
@@ -201,7 +213,7 @@ export const tickFish = (
   return next;
 };
 
-export const tickBubbles = (
+export const moveBubbles = (
   rows: number,
   columns: number,
   bubbles: Positions,
@@ -305,76 +317,75 @@ const setup = (columns: number, rows: number, writable: Writable) => {
   };
 };
 
+const loop = (state: State) => {
+  const [rows, columns] = state.dimensions();
+
+  let resized = false;
+  if (rows !== state.lastRows || columns !== state.lastColumns) {
+    [state.current, state.bubbles] = resize(
+      state.lastRows,
+      state.lastColumns,
+      rows,
+      columns,
+      state.current,
+      state.bubbles,
+    );
+    state.nextCurrent = createGrid(rows, columns);
+    state.nextBubbles = createGrid(rows, columns);
+    resized = true;
+  }
+
+  state.lastColumns = columns;
+  state.lastRows = rows;
+
+  spawnSwimming(rows, columns, state.current);
+  spawnCrawling(rows, columns, state.current);
+  spawnBubbles(rows, columns, state.bubbles);
+
+  clearGrid(state.nextBubbles, rows, columns);
+  clearGrid(state.nextCurrent, rows, columns);
+
+  moveBubbles(rows, columns, state.bubbles, state.nextBubbles);
+  moveFish(rows, columns, state.current, state.nextCurrent, state.tickCount);
+  [state.current, state.nextCurrent] = [state.nextCurrent, state.current];
+  [state.bubbles, state.nextBubbles] = [state.nextBubbles, state.bubbles];
+  state.tickCount++;
+
+  if (resized) {
+    const frame =
+      "\x1B[H" + refresh(rows, columns, state.current, state.bubbles);
+    state.writable.write(frame);
+    state.previous = compose(rows, columns, state.current, state.bubbles);
+    return;
+  }
+
+  const next = compose(rows, columns, state.current, state.bubbles);
+  const diffs = diff(rows, columns, state.previous, next);
+  const out = diffs.reduce(
+    (acc, diff) => acc + moveCursor(diff.row, diff.column) + diff.text,
+    "",
+  );
+
+  if (out.length > 0) state.writable.write(out);
+  state.previous = next;
+};
+
 export const render = (
   writable: Writable,
   rows: number,
   columns: number,
   dimensions: () => [rows: number, columns: number],
 ) => {
-  let {
-    lastRows,
-    lastColumns,
-    previous,
-    current,
-    nextCurrent,
-    bubbles,
-    nextBubbles,
-    tickCount,
-  } = setup(columns, rows, writable);
+  const initial = setup(columns, rows, writable);
+  const state = {
+    ...initial,
+    writable,
+    dimensions,
+  };
 
-  const interval = setInterval(() => {
-    const [rows, columns] = dimensions();
+  const interval = setInterval(() => loop(state), tickRate);
 
-    let resized = false;
-    if (rows !== lastRows || columns !== lastColumns) {
-      [current, bubbles] = resize(
-        lastRows,
-        lastColumns,
-        rows,
-        columns,
-        current,
-        bubbles,
-      );
-      nextCurrent = createGrid(rows, columns);
-      nextBubbles = createGrid(rows, columns);
-      resized = true;
-    }
-
-    lastColumns = columns;
-    lastRows = rows;
-
-    spawnSwimming(rows, columns, current);
-    spawnCrawling(rows, columns, current);
-    spawnBubbles(rows, columns, bubbles);
-
-    clearGrid(nextBubbles, rows, columns);
-    clearGrid(nextCurrent, rows, columns);
-
-    tickBubbles(rows, columns, bubbles, nextBubbles);
-    tickFish(rows, columns, current, nextCurrent, tickCount);
-    [current, nextCurrent] = [nextCurrent, current];
-    [bubbles, nextBubbles] = [nextBubbles, bubbles];
-    tickCount++;
-
-    if (resized) {
-      const frame = "\x1B[H" + refresh(rows, columns, current, bubbles);
-      writable.write(frame);
-      previous = compose(rows, columns, current, bubbles);
-      return;
-    }
-
-    const next = compose(rows, columns, current, bubbles);
-    const diffs = diff(rows, columns, previous, next);
-    const out = diffs.reduce(
-      (acc, diff) => acc + moveCursor(diff.row, diff.column) + diff.text,
-      "",
-    );
-
-    if (out.length > 0) writable.write(out);
-    previous = next;
-  }, tickRate);
-
-  const closeWritable = (writable: Writable) => {
+  const close = (writable: Writable) => {
     writable.write("\x1B[2J");
     writable.write("\x1B[H");
     writable.write("\x1B[?25h");
@@ -382,6 +393,6 @@ export const render = (
 
   return {
     interval,
-    closeWritable,
+    close,
   };
 };

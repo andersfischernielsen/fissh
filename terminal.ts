@@ -1,7 +1,7 @@
 import { render } from "./fish";
 
 export const start = () => {
-  const { closeWritable } = render(
+  const { close } = render(
     process.stdout,
     process.stdout.rows,
     Math.floor(process.stdout.columns / 2),
@@ -9,7 +9,7 @@ export const start = () => {
   );
 
   const exit = () => {
-    closeWritable(process.stdout);
+    close(process.stdout);
     process.exit(0);
   };
 

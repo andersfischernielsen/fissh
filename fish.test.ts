@@ -2,8 +2,8 @@ import { describe, it, expect } from "bun:test";
 import {
   createGrid,
   hasNeighbor,
-  tickFish,
-  tickBubbles,
+  moveFish,
+  moveBubbles,
   compose,
   diff,
   moveCursor,
@@ -62,7 +62,7 @@ describe("Fish Ticking", () => {
   it("preserves grid dimensions", () => {
     const grid = createGrid(5, 8);
     const nextBuffer = createGrid(5, 8);
-    const next = tickFish(5, 8, grid, nextBuffer, 0);
+    const next = moveFish(5, 8, grid, nextBuffer, 0);
     expect(next).toHaveLength(5);
     expect(next[0]?.length).toBe(8);
   });
@@ -71,7 +71,7 @@ describe("Fish Ticking", () => {
     const grid = createGrid(3, 5);
     grid[1]![3] = "🐟";
     const nextBuffer = createGrid(3, 5);
-    const next = tickFish(3, 5, grid, nextBuffer, 1);
+    const next = moveFish(3, 5, grid, nextBuffer, 1);
 
     const hasFishAtColumn2 = next[1]?.some(
       (cell, idx) => idx === 2 && cell === "🐟",
@@ -83,7 +83,7 @@ describe("Fish Ticking", () => {
     const grid = createGrid(5, 5);
     grid[2]![2] = "🐟";
     const nextBuffer = createGrid(5, 5);
-    const next = tickFish(5, 5, grid, nextBuffer, 100);
+    const next = moveFish(5, 5, grid, nextBuffer, 100);
 
     let foundFishBelowCutoff = false;
     for (let c = 0; c < 5; c++) {
@@ -99,7 +99,7 @@ describe("Bubble Ticking", () => {
   it("preserves grid dimensions", () => {
     const grid = createGrid(5, 8);
     const nextBuffer = createGrid(5, 8);
-    const next = tickBubbles(5, 8, grid, nextBuffer);
+    const next = moveBubbles(5, 8, grid, nextBuffer);
     expect(next).toHaveLength(5);
     expect(next[0]?.length).toBe(8);
   });
@@ -108,7 +108,7 @@ describe("Bubble Ticking", () => {
     const grid = createGrid(5, 5);
     grid[3]![2] = "🫧";
     const nextBuffer = createGrid(5, 5);
-    const next = tickBubbles(5, 5, grid, nextBuffer);
+    const next = moveBubbles(5, 5, grid, nextBuffer);
 
     expect(next[2]?.[2]).toBe("🫧");
     expect(next[3]?.[2]).not.toBe("🫧");
@@ -118,7 +118,7 @@ describe("Bubble Ticking", () => {
     const grid = createGrid(5, 5);
     grid[0]![2] = "🫧";
     const nextBuffer = createGrid(5, 5);
-    const next = tickBubbles(5, 5, grid, nextBuffer);
+    const next = moveBubbles(5, 5, grid, nextBuffer);
 
     expect(next[0]?.[2]).not.toBe("🫧");
   });
@@ -274,7 +274,7 @@ describe("Performance", () => {
     const nextBuffer = createGrid(rows, columns);
     const start = performance.now();
     for (let i = 0; i < iterations; i++) {
-      tickFish(rows, columns, grid, nextBuffer, i);
+      moveFish(rows, columns, grid, nextBuffer, i);
     }
     const elapsed = performance.now() - start;
 

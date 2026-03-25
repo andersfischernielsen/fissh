@@ -11,28 +11,45 @@ const privateKey = await Bun.file("host_key").text();
 const maxConnections = 1000;
 let activeConnections = 0;
 
-const connection: ServerConnectionListener = (
+const trackActiveConnections = (
+  isAtCapacity: boolean,
+  activeConnections: number,
   connection: Connection,
   info: ClientInfo,
 ) => {
   const { ip } = info;
   console.log(`Connected: ${ip} (${activeConnections + 1} active)`);
 
-  const isAtCapacity = activeConnections >= maxConnections;
-  if (!isAtCapacity) {
-    activeConnections++;
-    connection.on("close", () => {
-      activeConnections--;
-      console.log(`Closed: ${ip} (${activeConnections} active)`);
-    });
-  } else {
+  if (isAtCapacity) {
     connection.on("close", () => {
       console.log(`Closed: ${ip} (rejected, at capacity)`);
     });
+
+    return activeConnections;
   }
 
+  connection.on("close", () => {
+    activeConnections--;
+    console.log(`Closed: ${ip} (${activeConnections} active)`);
+  });
+
+  return activeConnections + 1;
+};
+
+const connection: ServerConnectionListener = (
+  connection: Connection,
+  info: ClientInfo,
+) => {
   let columns: number = NaN;
   let rows: number = NaN;
+
+  const isAtCapacity = activeConnections >= maxConnections;
+  activeConnections = trackActiveConnections(
+    isAtCapacity,
+    activeConnections,
+    connection,
+    info,
+  );
 
   connection.on("authentication", (c) => c.accept());
   connection.on("error", () => {});
@@ -61,14 +78,14 @@ const connection: ServerConnectionListener = (
         return;
       }
 
-      const { interval, closeWritable } = render(channel, rows, columns, () => [
+      const { interval, close } = render(channel, rows, columns, () => [
         rows,
         columns,
       ]);
 
       channel.on("data", (data: Buffer) => {
         if (data[0] === 0x03 || data[0] === 0x04) {
-          closeWritable(channel);
+          close(channel);
           clearInterval(interval);
           channel.end();
         }
