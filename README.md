@@ -2,20 +2,13 @@
 
 Fish in your terminal.
 
+```sh
+ssh isitafi.sh # You may need to specify '-t' depending on your SSH configuration.
+```
+
 ---
 
 ![fish.gif](fish.gif)
-
----
-
-To see it in action:
-
-```sh
-ssh isitafi.sh
-
-# Depending on your SSH configuration, you may need to specify:
-ssh -t isitafi.sh
-```
 
 ---
 
@@ -31,4 +24,6 @@ To run:
 bun run main.ts
 ```
 
-Modify `main.ts` to change the renderer. Over SSH, view the rendering at `ssh localhost`.
+Modify `main.ts` to switch the renderer. 
+View the SSH rendering at `ssh localhost`.
+View the terminal rendering via `bun run main.ts`.
