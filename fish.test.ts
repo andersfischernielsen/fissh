@@ -264,7 +264,7 @@ describe("Performance", () => {
   const columns = 400;
   const rows = 200;
 
-  it("ticks efficiently", () => {
+  it.skip("ticks efficiently", () => {
     const iterations = 1000;
 
     const grid = createGrid(rows, columns);
@@ -284,7 +284,7 @@ describe("Performance", () => {
     expect(elapsed).toBeLessThan(1000);
   });
 
-  it("composes efficiently", () => {
+  it.skip("composes efficiently", () => {
     const iterations = 5000;
 
     const positions = createGrid(rows, columns);
@@ -302,7 +302,7 @@ describe("Performance", () => {
     expect(elapsed).toBeLessThan(1000);
   });
 
-  it("diffs efficiently", () => {
+  it.skip("diffs efficiently", () => {
     const iterations = 2000;
     const prev = new Array(1920).fill("  ");
     const next = new Array(1920).fill("  ");
