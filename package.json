@@ -15,6 +15,9 @@
     "ssh2": "^1.17.0"
   },
   "scripts": {
-    "start": "bun run main.ts"
+    "start": "bun run main.ts",
+    "typecheck": "bun run tsgo",
+    "build:docker": "docker build .",
+    "test": "bun test"
   }
 }
