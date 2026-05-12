@@ -1,0 +1,13 @@
+name: Build containers
+
+on:
+  - push
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: touch host_key
+      - run: docker build .
