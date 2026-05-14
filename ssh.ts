@@ -1,12 +1,14 @@
-import {
-  Server,
+import { readFileSync } from "node:fs";
+import ssh2, {
   type ClientInfo,
   type Connection,
   type ServerConnectionListener,
 } from "ssh2";
+const { Server } = ssh2;
+
 import { render } from "./fish";
 
-const privateKey = await Bun.file("host_key").text();
+const privateKey = readFileSync("host_key", "utf-8");
 
 const maxConnections = 1000;
 let activeConnections = 0;

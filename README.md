@@ -15,15 +15,15 @@ ssh isitafi.sh # You may need to specify '-t' depending on your SSH configuratio
 # Development
 
 ```sh
-bun install
+npm install
 ```
 
 To run:
 
 ```sh
-bun run main.ts
+npx tsx main.ts
 ```
 
-Modify `main.ts` to switch the renderer. 
+Modify `main.ts` to switch the renderer.
 View the SSH rendering at `ssh localhost`.
-View the terminal rendering via `bun run main.ts`.
+View the terminal rendering via `npx tsx main.ts`.

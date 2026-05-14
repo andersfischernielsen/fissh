@@ -1,23 +1,21 @@
 {
   "name": "fissh",
-  "module": "main.ts",
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "^1.3.13",
+    "@types/node": "^25.7.0",
     "@types/ssh2": "^1.15.5",
-    "@typescript/native-preview": "^7.0.0-dev.20260511.1"
-  },
-  "peerDependencies": {
-    "typescript": "^6.0.3"
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
   },
   "dependencies": {
     "ssh2": "^1.17.0"
   },
   "scripts": {
-    "start": "bun run main.ts",
-    "typecheck": "bun run tsgo",
+    "start": "tsx main.ts",
+    "typecheck": "tsc --noEmit",
     "build:docker": "docker build .",
-    "test": "bun test"
+    "test": "vitest run"
   }
 }

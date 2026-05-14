@@ -1,11 +1,10 @@
-FROM oven/bun
+FROM node:22-alpine
 
-USER bun
 WORKDIR /fissh
-COPY --chown=bun:bun package.json /fissh
-RUN bun install
+COPY package.json /fissh
+RUN npm install
 
-COPY --chown=bun:bun main.ts fish.ts ssh.ts host_key /fissh/
+COPY main.ts fish.ts ssh.ts host_key /fissh/
 
 EXPOSE 22
-ENTRYPOINT [ "bun", "run", "start" ]
+ENTRYPOINT [ "npx", "tsx", "main.ts" ]

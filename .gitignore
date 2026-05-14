@@ -1,6 +1,6 @@
 host_key
 
-# dependencies (bun install)
+# dependencies
 node_modules
 
 # output

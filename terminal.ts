@@ -14,5 +14,5 @@ export const start = () => {
   };
 
   process.on("SIGINT", exit);
-  process.on("SIGKILL", exit);
+  process.on("SIGTERM", exit);
 };
