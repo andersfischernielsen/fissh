@@ -8,7 +8,7 @@ const { Server } = ssh2;
 
 import { render } from "./fish";
 
-const privateKey = readFileSync("host_key", "utf-8");
+const privateKey = readFileSync("host_key");
 
 const maxConnections = 1000;
 let activeConnections = 0;
