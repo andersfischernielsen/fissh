@@ -1,4 +1,4 @@
-import { render } from "./fish";
+import { render } from "./fish.ts";
 
 export const start = () => {
   const { close } = render(

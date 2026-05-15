@@ -21,9 +21,9 @@ npm install
 To run:
 
 ```sh
-npx tsx main.ts
+node main.ts
 ```
 
 Modify `main.ts` to switch the renderer.
 View the SSH rendering at `ssh localhost`.
-View the terminal rendering via `npx tsx main.ts`.
+View the terminal rendering via `node main.ts`.

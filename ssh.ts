@@ -6,7 +6,7 @@ import ssh2, {
 } from "ssh2";
 const { Server } = ssh2;
 
-import { render } from "./fish";
+import { render } from "./fish.ts";
 
 const privateKey = readFileSync("host_key");
 
