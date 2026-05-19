@@ -16,6 +16,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "26"
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: touch host_key
       - run: npm run build:docker
