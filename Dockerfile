@@ -2,7 +2,7 @@ FROM node:26-alpine
 
 WORKDIR /fissh
 COPY package.json /fissh
-RUN npm install
+RUN npm install --ignore-scripts
 
 COPY main.ts fish.ts ssh.ts host_key /fissh/
 
