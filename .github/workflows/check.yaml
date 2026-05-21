@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   check:
-    name: Typecheck
+    name: Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
