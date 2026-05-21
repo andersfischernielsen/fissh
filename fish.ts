@@ -70,9 +70,7 @@ const spawnBubbles = (rows: number, columns: number, bubbles: Positions) => {
 };
 
 export const createGrid = (rows: number, columns: number): Positions =>
-  Array.from({ length: rows }, () =>
-    new Array<Entity | null>(columns).fill(null),
-  );
+  Array.from({ length: rows }, () => Array.from<Entity | null>({ length: columns }).fill(null));
 
 export const clearGrid = (grid: Positions, rows: number, columns: number) => {
   for (let r = 0; r < rows; r++) {
@@ -138,21 +136,13 @@ export const refresh = (
   return parts.join("");
 };
 
-export const hasNeighbor = (
-  positions: Positions,
-  row: number,
-  column: number,
-): boolean => {
+export const hasNeighbor = (positions: Positions, row: number, column: number): boolean => {
   for (let r = -1; r <= 1; r++) {
     for (let c = -1; c <= 1; c++) {
       if (r === 0 && c === 0) continue;
 
       const neighbor = positions[row + r]?.[column + c];
-      if (
-        neighbor &&
-        !swimming.has(neighbor as Swimming) &&
-        !crawling.has(neighbor as Crawling)
-      )
+      if (neighbor && !swimming.has(neighbor as Swimming) && !crawling.has(neighbor as Crawling))
         return true;
     }
   }
@@ -173,11 +163,7 @@ export const moveFish = (
     if (!positionsRow) continue;
     const nextRow = next[row]!;
 
-    for (
-      let column = 0;
-      column < Math.min(positionsRow.length, columns);
-      column++
-    ) {
+    for (let column = 0; column < Math.min(positionsRow.length, columns); column++) {
       const species = positionsRow[column];
       if (!species) continue;
       if (bubble.has(species as Bubble)) continue;
@@ -224,11 +210,7 @@ export const moveBubbles = (
     if (!positionsRow) continue;
     const newRow = row - 1;
 
-    for (
-      let column = 0;
-      column < Math.min(positionsRow.length, columns);
-      column++
-    ) {
+    for (let column = 0; column < Math.min(positionsRow.length, columns); column++) {
       if (!positionsRow[column] || newRow < 0 || newRow >= rows) continue;
       if (!next[newRow]) continue;
       next[newRow]![column] = "🫧";
@@ -238,12 +220,7 @@ export const moveBubbles = (
   return next;
 };
 
-export const diff = (
-  rows: number,
-  cols: number,
-  prev: string[],
-  next: string[],
-): Diff[] => {
+export const diff = (rows: number, cols: number, prev: string[], next: string[]): Diff[] => {
   const diff: Diff[] = [];
   const n = rows * cols;
   for (let i = 0; i < n; i++) {
@@ -264,7 +241,7 @@ export const compose = (
   bubbles: Positions,
   cellWidth = 2,
 ): string[] => {
-  const flat = new Array<string>(rows * cols);
+  const flat = Array.from<string>({ length: rows * cols });
   let i = 0;
   for (let r = 0; r < rows; r++) {
     const positionsRow = positions[r]!;
@@ -280,11 +257,7 @@ export const compose = (
   return flat;
 };
 
-export const moveCursor = (
-  row: number,
-  column: number,
-  cellWidth = 2,
-): string => {
+export const moveCursor = (row: number, column: number, cellWidth = 2): string => {
   return `\x1B[${row + 1};${column * cellWidth + 1}H`;
 };
 
@@ -352,8 +325,7 @@ const loop = (state: State) => {
   state.tickCount++;
 
   if (resized) {
-    const frame =
-      "\x1B[H" + refresh(rows, columns, state.current, state.bubbles);
+    const frame = "\x1B[H" + refresh(rows, columns, state.current, state.bubbles);
     state.writable.write(frame);
     state.previous = compose(rows, columns, state.current, state.bubbles);
     return;
@@ -361,10 +333,7 @@ const loop = (state: State) => {
 
   const next = compose(rows, columns, state.current, state.bubbles);
   const diffs = diff(rows, columns, state.previous, next);
-  const out = diffs.reduce(
-    (acc, diff) => acc + moveCursor(diff.row, diff.column) + diff.text,
-    "",
-  );
+  const out = diffs.reduce((acc, diff) => acc + moveCursor(diff.row, diff.column) + diff.text, "");
 
   if (out.length > 0) state.writable.write(out);
   state.previous = next;

@@ -1,4 +1,4 @@
-name: Typecheck
+name: Check
 
 on:
   - push
@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  typecheck:
+  check:
     name: Typecheck
     runs-on: ubuntu-latest
     steps:
@@ -18,3 +18,5 @@ jobs:
           node-version: "26"
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check

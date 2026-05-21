@@ -73,9 +73,7 @@ describe("Fish Ticking", () => {
     const nextBuffer = createGrid(3, 5);
     const next = moveFish(3, 5, grid, nextBuffer, 1);
 
-    const hasFishAtColumn2 = next[1]?.some(
-      (cell, idx) => idx === 2 && cell === "🐟",
-    );
+    const hasFishAtColumn2 = next[1]?.some((cell, idx) => idx === 2 && cell === "🐟");
     expect(hasFishAtColumn2 || next[1]?.[3] === "🐟").toBe(true);
   });
 
@@ -167,9 +165,9 @@ describe("Compose", () => {
 
 describe("Diff", () => {
   it("identifies changed cells", () => {
-    const prev = new Array(4).fill("  ");
+    const prev = Array.from<string>({ length: 4 }).fill("  ");
     prev[1] = "🐟";
-    const next = new Array(4).fill("  ");
+    const next = Array.from<string>({ length: 4 }).fill("  ");
     next[1] = "🐠";
 
     const changes = diff(2, 2, prev, next);
@@ -179,16 +177,16 @@ describe("Diff", () => {
   });
 
   it("returns empty for identical grids", () => {
-    const prev = new Array(4).fill("  ");
-    const next = new Array(4).fill("  ");
+    const prev = Array.from<string>({ length: 4 }).fill("  ");
+    const next = Array.from<string>({ length: 4 }).fill("  ");
 
     const changes = diff(2, 2, prev, next);
     expect(changes).toHaveLength(0);
   });
 
   it("calculates correct row/column indices", () => {
-    const prev = new Array(6).fill("  ");
-    const next = new Array(6).fill("  ");
+    const prev = Array.from<string>({ length: 6 }).fill("  ");
+    const next = Array.from<string>({ length: 6 }).fill("  ");
     next[4] = "🐟";
 
     const changes = diff(3, 2, prev, next);
@@ -233,7 +231,7 @@ describe("Resize", () => {
     const bubbles = createGrid(3, 3);
     current[0]![0] = "🐟";
 
-    const [newCurrent, newBubbles] = resize(3, 3, 4, 4, current, bubbles);
+    const [newCurrent] = resize(3, 3, 4, 4, current, bubbles);
 
     expect(newCurrent[0]?.[0]).toBe("🐟");
   });
@@ -304,8 +302,8 @@ describe("Performance", () => {
 
   it.skip("diffs efficiently", () => {
     const iterations = 2000;
-    const prev = new Array(1920).fill("  ");
-    const next = new Array(1920).fill("  ");
+    const prev = Array.from<string>({ length: 1920 }).fill("  ");
+    const next = Array.from<string>({ length: 1920 }).fill("  ");
     next[500] = "🐟";
 
     const start = performance.now();

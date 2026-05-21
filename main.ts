@@ -1,4 +1,4 @@
-// import { start } from "./terminal";
+// import { start } from "./terminal.ts";
 import { start } from "./ssh.ts";
 
 start();
