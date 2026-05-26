@@ -19,7 +19,7 @@
     "@types/node": "^25.7.0",
     "@types/ssh2": "^1.15.5",
     "@typescript/native-preview": "^7.0.0-dev.20260519.1",
-    "oxfmt": "^0.51.0",
+    "oxfmt": "^0.52.0",
     "oxlint": "^1.66.0",
     "typescript": "^6.0",
     "vitest": "^4.0.0"
