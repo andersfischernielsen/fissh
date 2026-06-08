@@ -11,7 +11,6 @@ let activeConnections = 0;
 
 const trackActiveConnections = (
   isAtCapacity: boolean,
-  activeConnections: number,
   connection: Connection,
   info: ClientInfo,
 ) => {
@@ -39,7 +38,7 @@ const connection: ServerConnectionListener = (connection: Connection, info: Clie
   let rows: number = NaN;
 
   const isAtCapacity = activeConnections >= maxConnections;
-  activeConnections = trackActiveConnections(isAtCapacity, activeConnections, connection, info);
+  activeConnections = trackActiveConnections(isAtCapacity, connection, info);
 
   connection.on("authentication", (c) => c.accept());
   connection.on("error", () => {});
