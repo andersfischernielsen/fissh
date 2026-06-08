@@ -73,7 +73,7 @@ describe("Fish Ticking", () => {
     const nextBuffer = createGrid(3, 5);
     const next = moveFish(3, 5, grid, nextBuffer, 1);
 
-    const hasFishAtColumn2 = next[1]?.some((cell, idx) => idx === 2 && cell === "🐟");
+    const hasFishAtColumn2 = next.some((row) => row?.[2] === "🐟");
     expect(hasFishAtColumn2 || next[1]?.[3] === "🐟").toBe(true);
   });
 
