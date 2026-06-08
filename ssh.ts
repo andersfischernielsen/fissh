@@ -1,9 +1,5 @@
 import { readFileSync } from "node:fs";
-import ssh2, {
-  type ClientInfo,
-  type Connection,
-  type ServerConnectionListener,
-} from "ssh2";
+import ssh2, { type ClientInfo, type Connection, type ServerConnectionListener } from "ssh2";
 const { Server } = ssh2;
 
 import { render } from "./fish.ts";
@@ -38,20 +34,12 @@ const trackActiveConnections = (
   return activeConnections + 1;
 };
 
-const connection: ServerConnectionListener = (
-  connection: Connection,
-  info: ClientInfo,
-) => {
+const connection: ServerConnectionListener = (connection: Connection, info: ClientInfo) => {
   let columns: number = NaN;
   let rows: number = NaN;
 
   const isAtCapacity = activeConnections >= maxConnections;
-  activeConnections = trackActiveConnections(
-    isAtCapacity,
-    activeConnections,
-    connection,
-    info,
-  );
+  activeConnections = trackActiveConnections(isAtCapacity, activeConnections, connection, info);
 
   connection.on("authentication", (c) => c.accept());
   connection.on("error", () => {});
@@ -73,17 +61,12 @@ const connection: ServerConnectionListener = (
       const channel = accept();
 
       if (isAtCapacity) {
-        channel.write(
-          "\r\n🐟 Too many concurrent connections! Try again later.\r\n\r\n",
-        );
+        channel.write("\r\n🐟 Too many concurrent connections! Try again later.\r\n\r\n");
         channel.end();
         return;
       }
 
-      const { interval, close } = render(channel, rows, columns, () => [
-        rows,
-        columns,
-      ]);
+      const { interval, close } = render(channel, rows, columns, () => [rows, columns]);
 
       const maxConnectionDuration = setTimeout(
         () => {

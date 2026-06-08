@@ -8,6 +8,7 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
+    "format:fix": "oxfmt",
     "format:check": "oxfmt --check",
     "build:docker": "docker build .",
     "test": "vitest run"
