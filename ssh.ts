@@ -9,61 +9,60 @@ const privateKey = readFileSync("host_key");
 const maxConnections = 1000;
 let activeConnections = 0;
 
-const trackActiveConnections = (
-  isAtCapacity: boolean,
-  connection: Connection,
-  info: ClientInfo,
-) => {
-  const { ip } = info;
-  console.log(`Connected: ${ip} (${activeConnections + 1} active)`);
+const minRows = 2;
+const maxRows = 100;
+const minColumns = 1;
+const maxColumns = 200;
 
-  if (isAtCapacity) {
-    connection.on("close", () => {
-      console.log(`Closed: ${ip} (rejected, at capacity)`);
-    });
-
-    return activeConnections;
-  }
-
-  connection.on("close", () => {
-    activeConnections--;
-    console.log(`Closed: ${ip} (${activeConnections} active)`);
-  });
-
-  return activeConnections + 1;
-};
+const clamp = (n: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, Math.floor(n) || min));
 
 const connection: ServerConnectionListener = (connection: Connection, info: ClientInfo) => {
-  let columns: number = NaN;
-  let rows: number = NaN;
+  const { ip } = info;
+  let columns = 40;
+  let rows = 24;
+  let counted = false;
 
-  const isAtCapacity = activeConnections >= maxConnections;
-  activeConnections = trackActiveConnections(isAtCapacity, connection, info);
+  console.log(`Connected: ${ip}`);
 
   connection.on("authentication", (c) => c.accept());
-  connection.on("error", () => {});
+  connection.on("error", (err) => {
+    console.error(`Connection error from ${ip}: ${err.message}`);
+  });
+  connection.on("close", () => {
+    if (counted) {
+      activeConnections--;
+      console.log(`Closed: ${ip} (${activeConnections} active)`);
+    } else {
+      console.log(`Closed: ${ip} (pre-auth)`);
+    }
+  });
   connection.on("session", (accept) => {
     const session = accept();
 
     session.on("pty", (accept, _, info) => {
-      columns = Math.floor(info.cols / 2);
-      rows = info.rows;
+      columns = clamp(info.cols / 2, minColumns, maxColumns);
+      rows = clamp(info.rows, minRows, maxRows);
       accept();
     });
 
     session.on("window-change", (_, __, info) => {
-      columns = Math.floor(info.cols / 2);
-      rows = info.rows;
+      columns = clamp(info.cols / 2, minColumns, maxColumns);
+      rows = clamp(info.rows, minRows, maxRows);
     });
 
     session.on("shell", (accept) => {
       const channel = accept();
 
-      if (isAtCapacity) {
+      if (activeConnections >= maxConnections) {
         channel.write("\r\n🐟 Too many concurrent connections! Try again later.\r\n\r\n");
         channel.end();
         return;
       }
+
+      activeConnections++;
+      counted = true;
+      console.log(`Shell opened: ${ip} (${activeConnections} active)`);
 
       const { interval, close } = render(channel, rows, columns, () => [rows, columns]);
 
