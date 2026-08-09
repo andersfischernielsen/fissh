@@ -5,7 +5,7 @@ type Crawling = "🦀";
 type Vegetation = "🌱";
 type Bubble = "🫧";
 type Entity = Swimming | Crawling | Vegetation | Bubble;
-type Positions = (Entity | null)[][];
+type Positions = (Entity | null | undefined)[][];
 type Diff = { row: number; column: number; text: string };
 type State = {
   lastRows: number;
@@ -20,9 +20,9 @@ type State = {
   dimensions: () => [rows: number, columns: number];
 };
 
-const swimming: Set<Swimming> = new Set(["🐟", "🐠", "🐡"]);
-const crawling: Set<Crawling> = new Set(["🦀"]);
-const bubble: Set<Bubble> = new Set(["🫧"]);
+const swimming: Set<Entity> = new Set(["🐟", "🐠", "🐡"]);
+const crawling: Set<Entity> = new Set(["🦀"]);
+const bubble: Set<Entity> = new Set(["🫧"]);
 
 const variance = 0.2;
 const tickRate = 140;
@@ -38,7 +38,7 @@ const randomSpawn = (rows: number, columns: number, current: Positions) => {
     current[row]![col] = swimming
       .values()
       .drop(Math.floor(Math.random() * swimming.size))
-      .next().value as Swimming;
+      .next().value;
   }
 };
 
@@ -55,7 +55,7 @@ const spawnCrawling = (rows: number, columns: number, current: Positions) => {
     current[bottom]![columns - 1] = crawling
       .values()
       .drop(Math.floor(Math.random() * crawling.size))
-      .next().value as Crawling;
+      .next().value;
   }
 };
 
@@ -97,7 +97,7 @@ export const resize = (
   for (let r = 0; r < minRows; r++) {
     for (let c = 0; c < minCols; c++) {
       const species = current[r]![c];
-      if (species && crawling.has(species as Crawling)) {
+      if (species && crawling.has(species)) {
         newCurrent[newBottom]![c] = species;
       } else {
         newCurrent[r]![c] = species ?? null;
@@ -109,7 +109,7 @@ export const resize = (
   if (oldBottom >= minRows) {
     for (let c = 0; c < minCols; c++) {
       const species = current[oldBottom]![c];
-      if (species && crawling.has(species as Crawling)) {
+      if (species && crawling.has(species)) {
         newCurrent[newBottom]![c] = species;
       }
     }
@@ -142,8 +142,7 @@ export const hasNeighbor = (positions: Positions, row: number, column: number): 
       if (r === 0 && c === 0) continue;
 
       const neighbor = positions[row + r]?.[column + c];
-      if (neighbor && !swimming.has(neighbor as Swimming) && !crawling.has(neighbor as Crawling))
-        return true;
+      if (neighbor && !swimming.has(neighbor) && !crawling.has(neighbor)) return true;
     }
   }
 
@@ -166,9 +165,9 @@ export const moveFish = (
     for (let column = 0; column < Math.min(positionsRow.length, columns); column++) {
       const species = positionsRow[column];
       if (!species) continue;
-      if (bubble.has(species as Bubble)) continue;
+      if (bubble.has(species)) continue;
 
-      const isSwimming = swimming.has(species as Swimming);
+      const isSwimming = swimming.has(species);
 
       if (!isSwimming && tickCount % 3 !== 0) {
         nextRow[column] = species;
@@ -213,7 +212,7 @@ export const moveBubbles = (
     for (let column = 0; column < Math.min(positionsRow.length, columns); column++) {
       if (!positionsRow[column] || newRow < 0 || newRow >= rows) continue;
       if (!next[newRow]) continue;
-      next[newRow]![column] = "🫧";
+      next[newRow][column] = "🫧";
     }
   }
 
@@ -339,6 +338,12 @@ const loop = (state: State) => {
   state.previous = next;
 };
 
+const close = (writable: Writable) => {
+  writable.write("\x1B[2J");
+  writable.write("\x1B[H");
+  writable.write("\x1B[?25h");
+};
+
 export const render = (
   writable: Writable,
   rows: number,
@@ -353,12 +358,6 @@ export const render = (
   };
 
   const interval = setInterval(() => loop(state), tickRate);
-
-  const close = (writable: Writable) => {
-    writable.write("\x1B[2J");
-    writable.write("\x1B[H");
-    writable.write("\x1B[?25h");
-  };
 
   return {
     interval,
